@@ -1,14 +1,13 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { aiProvider, PROVIDERS, useAiProvider } from "@/lib/aiProvider";
 import { cn } from "@/lib/cn";
 import { ProviderConfig } from "./AiProviderMenu";
 import { ProviderIcon } from "./ProviderIcon";
 
-/** Inline AI-provider chooser for the start of a flow. Shows every provider as a
-    selectable card and the active one's config below. The choice is per-browser
-    and stays switchable from the header menu. */
+/** Inline AI-provider chooser for the start of a flow. Every provider is an
+    equal-size card; the active one's config sits in a fixed-height panel below so
+    switching never makes the layout jump. Choice is per-browser, also in the header. */
 export function ProviderPicker({ className, style }: { className?: string; style?: React.CSSProperties }) {
   const active = useAiProvider();
 
@@ -27,16 +26,13 @@ export function ProviderPicker({ className, style }: { className?: string; style
               onClick={() => aiProvider.set(p.id)}
               aria-pressed={on}
               className={cn(
-                "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
-                on ? "border-accent-line bg-accent-soft" : "border-border hover:bg-raised",
+                "flex h-full min-h-[58px] items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                on ? "border-accent-line bg-accent-soft ring-1 ring-accent-line" : "border-border hover:bg-raised",
               )}
             >
               <ProviderIcon id={p.id} />
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1 text-[13.5px] text-ink">
-                  {p.label}
-                  {on && <Check className="size-3.5 shrink-0 text-accent" strokeWidth={2.5} />}
-                </span>
+                <span className={cn("block truncate text-[13.5px]", on ? "text-ink" : "text-ink-dim")}>{p.label}</span>
                 <span className="block truncate text-[11.5px] text-sub">{p.hint}</span>
               </span>
             </button>
@@ -44,7 +40,7 @@ export function ProviderPicker({ className, style }: { className?: string; style
         })}
       </div>
 
-      <div className="mt-3 rounded-xl border border-border bg-raised/40 p-3">
+      <div className="mt-3 min-h-[128px] rounded-xl border border-border bg-raised/40 p-3">
         <ProviderConfig id={active} />
       </div>
     </div>

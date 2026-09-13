@@ -24,6 +24,8 @@ import { store } from "@/lib/store";
 type Stage = "setup" | "contact" | "questions" | "drafting" | "import";
 
 const LEVELS = ["Student", "0-2 years", "3-5 years", "6-10 years", "10+ years"] as const;
+// The active pill deepens with seniority: neutral for a student, green as it rises, gold at the top.
+const LEVEL_RAMP = ["#94a3b8", "#7dd3a1", "#34d399", "#159f77", "#e0a458"];
 
 const DEFAULT_QUESTIONS: Question[] = [
   { topic: "experience", question: "What is your most recent job title, who was the employer, and what were the dates?", hint: "Title, company, city, and month-year to month-year or present." },
@@ -205,7 +207,28 @@ export function Interview() {
               </Field>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-medium text-ink-dim">Experience</span>
-                <Segmented label="Experience level" value={level} onChange={setLevel} options={LEVELS.map((l) => ({ value: l, label: l }))} className="flex-wrap" />
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Experience level">
+                  {LEVELS.map((l, idx) => {
+                    const on = level === l;
+                    const c = LEVEL_RAMP[idx];
+                    return (
+                      <button
+                        key={l}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setLevel(l)}
+                        className={cn(
+                          "rounded-full border px-4 py-2 text-[13px] font-medium transition-colors",
+                          !on && "border-border text-ink-dim hover:bg-raised hover:text-ink",
+                        )}
+                        style={on ? { background: `${c}22`, borderColor: c, color: c } : undefined}
+                      >
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <Field label="Industry (optional)">
                 {(id) => <Input id={id} value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Fintech, healthcare, agency work" />}
