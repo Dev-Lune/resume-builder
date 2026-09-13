@@ -70,7 +70,7 @@ Choose per browser, switch any time from the top bar.
 ## Quick start
 
 ```bash
-git clone https://github.com/SIDDHU123M/resume-builder.git
+git clone https://github.com/dev-lune/resume-builder.git
 cd resume-builder
 npm install
 cp .env.example .env   # optional: add a provider key, or use Local/Manual with none
