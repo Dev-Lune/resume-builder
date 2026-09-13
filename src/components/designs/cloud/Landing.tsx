@@ -41,7 +41,15 @@ export function CloudLanding() {
       <ScrollStory />
 
       <footer className="mx-auto max-w-5xl px-5 py-10 text-center text-[13px] text-sub">
-        Bespoke · an AI resume builder · nothing stored on a server
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <a href="https://devlune.in/privacy" target="_blank" rel="noreferrer" className="hover:text-ink">Privacy</a>
+          <a href="https://devlune.in/terms" target="_blank" rel="noreferrer" className="hover:text-ink">Terms</a>
+          <a href="https://devlune.in/data-deletion" target="_blank" rel="noreferrer" className="hover:text-ink">Data policy</a>
+        </nav>
+        <p className="mt-3">
+          Bespoke, an AI resume builder. Nothing stored on a server. Built by{" "}
+          <a href="https://devlune.in" target="_blank" rel="noreferrer" className="hover:text-ink">DevLune</a>.
+        </p>
       </footer>
     </div>
   );

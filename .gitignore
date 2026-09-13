@@ -28,3 +28,8 @@ keys_*.txt
 # local scratch
 MetalForge-Progress-rn.zip
 _mf_progress/
+
+# cloudflare / opennext build output
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
