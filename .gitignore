@@ -1,0 +1,30 @@
+# dependencies / build
+node_modules
+.next
+.next-build
+out
+*.tsbuildinfo
+next-env.d.ts
+
+# env (only .env.example is committed)
+.env
+.env*.local
+
+# os
+.DS_Store
+
+# assistant / private working files (excluded from the public repo)
+.claude/
+CLAUDE.md
+claude-resume.txt
+docs/
+*.log
+
+# harvested key material — never commit
+keys/
+keys_*.tsv
+keys_*.txt
+
+# local scratch
+MetalForge-Progress-rn.zip
+_mf_progress/

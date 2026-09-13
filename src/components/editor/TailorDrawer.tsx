@@ -1,0 +1,176 @@
+"use client";
+
+import { useState } from "react";
+import { Scissors } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
+import { Field, Textarea } from "@/components/ui/Field";
+import { uid, type Resume, type TailorResult } from "@/lib/schema";
+import type { Update } from "./Editor";
+import { KeywordChips } from "./bits";
+import { useAi } from "./useAi";
+
+export function TailorDrawer({ open, onClose, resume, update }: { open: boolean; onClose: () => void; resume: Resume; update: Update }) {
+  const { run, busy, error } = useAi();
+  const [result, setResult] = useState<TailorResult | null>(null);
+  const [parts, setParts] = useState({ head: true, bullets: true, skills: true });
+  const jd = resume.jobDescription;
+
+  const analyze = async () => {
+    setResult(null);
+    const out = await run<TailorResult>("tailor", {
+      jobDescription: jd,
+      resume: {
+        headline: resume.basics.headline,
+        summary: resume.summary,
+        experience: resume.experience.map((e, index) => ({ index, role: e.role, company: e.company, bullets: e.bullets.filter(Boolean) })),
+        skills: resume.skills.map((g) => ({ name: g.name, items: g.items })),
+        other: [
+          ...resume.projects.map((p) => `${p.name}: ${p.description} ${p.bullets.join(" ")}`),
+          ...resume.education.map((e) => `${e.degree} ${e.field} ${e.school}`),
+          ...resume.certifications.map((c) => c.name),
+        ].join("\n"),
+      },
+    });
+    if (out) setResult(out);
+  };
+
+  const apply = () => {
+    if (!result) return;
+    update((r) => {
+      const next = { ...r };
+      if (parts.head) {
+        next.basics = { ...r.basics, headline: result.headline || r.basics.headline };
+        next.summary = result.summary || r.summary;
+      }
+      if (parts.bullets) {
+        next.experience = r.experience.map((e, i) => {
+          const t = result.experience.find((x) => x.index === i);
+          return t && t.bullets.length ? { ...e, bullets: t.bullets } : e;
+        });
+      }
+      if (parts.skills && result.skills.length) {
+        next.skills = result.skills.map((g) => ({ ...g, id: uid() }));
+      }
+      return next;
+    });
+    setResult(null);
+    onClose();
+  };
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title="Tailor to a posting"
+      width="max-w-2xl"
+      footer={
+        result ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-4 text-sm">
+              {(
+                [
+                  ["head", "Headline and summary"],
+                  ["bullets", "Bullets"],
+                  ["skills", "Skills"],
+                ] as const
+              ).map(([k, label]) => (
+                <label key={k} className="flex items-center gap-2">
+                  <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={parts[k]} onChange={(e) => setParts({ ...parts, [k]: e.target.checked })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setResult(null)}>
+                Keep mine
+              </Button>
+              <Button variant="primary" onClick={apply} disabled={!parts.head && !parts.bullets && !parts.skills}>
+                Apply changes
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end">
+            <Button variant="primary" onClick={analyze} loading={busy} disabled={jd.trim().length < 80}>
+              <Scissors className="size-4" strokeWidth={1.5} /> {busy ? "Reading the posting" : "Analyze and tailor"}
+            </Button>
+          </div>
+        )
+      }
+    >
+      {!result && (
+        <>
+          <Field
+            label="Job posting"
+            hint="Paste the whole thing, requirements included. Nothing is invented: bullets are reworded and reordered, keywords you lack are listed, not added."
+            error={error ?? undefined}
+          >
+            {(id, by) => <Textarea id={id} aria-describedby={by} minRows={14} value={jd} onChange={(e) => update({ jobDescription: e.target.value })} placeholder="Senior Frontend Engineer, Payments. We are looking for..." />}
+          </Field>
+        </>
+      )}
+
+      {result && (
+        <div className="fade flex flex-col gap-8">
+          <KeywordChips matched={result.keywords.matched} missing={result.keywords.missing} />
+
+          <div>
+            <h3 className="text-[13px] font-medium text-ink-dim">What changes</h3>
+            <ul className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-ink-dim">
+              {result.notes.map((n, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-[9px] h-px w-3 shrink-0 bg-border" aria-hidden="true" />
+                  {n}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-[13px] font-medium text-ink-dim">Headline</h3>
+            <p className="mt-1 text-sm">
+              {result.headline !== resume.basics.headline && <span className="text-sub line-through">{resume.basics.headline || "none"} </span>}
+              {result.headline}
+            </p>
+            <h3 className="mt-4 text-[13px] font-medium text-ink-dim">Summary</h3>
+            <p className="mt-1 text-sm leading-relaxed">{result.summary}</p>
+          </div>
+
+          {result.experience.map((t) => {
+            const e = resume.experience[t.index];
+            if (!e) return null;
+            return (
+              <div key={t.index}>
+                <h3 className="text-[13px] font-medium text-ink-dim">
+                  {e.role}
+                  {e.company ? ` at ${e.company}` : ""}
+                </h3>
+                <ul className="mt-1.5 flex flex-col gap-1.5 text-sm leading-relaxed">
+                  {t.bullets.map((b, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-[9px] h-px w-3 shrink-0 bg-accent" aria-hidden="true" />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+
+          <div>
+            <h3 className="text-[13px] font-medium text-ink-dim">Skills, regrouped</h3>
+            <ul className="mt-1.5 flex flex-col gap-1 text-sm">
+              {result.skills.map((g, i) => (
+                <li key={i}>
+                  <span className="font-medium">{g.name}: </span>
+                  <span className="text-ink-dim">{g.items.join(", ")}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Drawer>
+  );
+}
