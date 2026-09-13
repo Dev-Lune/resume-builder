@@ -6,7 +6,10 @@
 
 An AI resume builder that interviews you, writes a parser-safe resume, lets you edit it beside a live sheet, tailors it to any posting, scores it like an ATS, and exports a clean PDF, Word, or text file. Free, no account, and it runs on whatever AI you already have — including none.
 
+### [→ Live at resume.devlune.in](https://resume.devlune.in)
+
 <p>
+  <a href="https://resume.devlune.in"><img alt="Live site" src="https://img.shields.io/badge/live-resume.devlune.in-1f7a5c?style=flat-square" /></a>
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-1f7a5c?style=flat-square" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js" />
   <img alt="React 19" src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react" />
