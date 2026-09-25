@@ -69,3 +69,28 @@ export function useManualRequest(): Pending | null {
     () => null,
   );
 }
+
+/* ── Inline hosting ──
+   A page that renders the exchange in place (the builder's Draft step) registers
+   as a host; while one is mounted, the global dialog stays out of the way. */
+let inlineHosts = 0;
+
+export const manualInline = {
+  /** Register an inline host. Returns the unregister function. */
+  mount(): () => void {
+    inlineHosts += 1;
+    emit();
+    return () => {
+      inlineHosts = Math.max(0, inlineHosts - 1);
+      emit();
+    };
+  },
+};
+
+export function useInlineHosted(): boolean {
+  return useSyncExternalStore(
+    manualBridge.subscribe,
+    () => inlineHosts > 0,
+    () => false,
+  );
+}
