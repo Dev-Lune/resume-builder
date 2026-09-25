@@ -1,5 +1,5 @@
-import { DesignSwitcher } from "@/components/lab/DesignSwitcher";
+import { Landing } from "@/components/home/Landing";
 
 export default function Home() {
-  return <DesignSwitcher />;
+  return <Landing />;
 }
