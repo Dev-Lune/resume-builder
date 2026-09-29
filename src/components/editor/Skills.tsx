@@ -5,7 +5,7 @@ import { Plus, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { emptySkillGroup, uid, type Resume, type SkillGroup } from "@/lib/schema";
-import { resumeToText } from "@/lib/text";
+import { aiContext, resumeToText } from "@/lib/text";
 import type { Update } from "./Editor";
 import { EntryFrame, SectionHeader } from "./Entries";
 import { swap } from "./Sections";
@@ -58,7 +58,7 @@ export function SkillsSection({ resume, update }: { resume: Resume; update: Upda
   const suggest = async () => {
     const out = await run<{ groups: { name: string; items: string[] }[] }>("skills", {
       resume: resumeToText(resume),
-      targetRole: resume.targetRole || resume.basics.headline,
+      ...aiContext(resume),
     });
     if (out) setSuggested(out.groups.map((g) => ({ ...g, id: uid() })));
   };

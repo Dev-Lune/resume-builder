@@ -5,9 +5,9 @@ import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { emptyCertification, emptyEducation, type Resume } from "@/lib/schema";
-import { resumeToText } from "@/lib/text";
+import { aiContext, resumeToText } from "@/lib/text";
 import type { Update } from "./Editor";
-import { EntryFrame, SectionHeader } from "./Entries";
+import { BulletList, EntryFrame, SectionHeader } from "./Entries";
 import { VariantList } from "./bits";
 import { useAi } from "./useAi";
 
@@ -31,21 +31,66 @@ export function DetailsSection({ resume, update }: Props) {
         <Field label="GitHub or portfolio">{(id) => <Input id={id} value={b.github} onChange={set("github")} placeholder="github.com/you" />}</Field>
         <Field label="Website">{(id) => <Input id={id} value={b.website} onChange={set("website")} placeholder="you.dev" />}</Field>
       </div>
+      <AiContextFields resume={resume} update={update} />
     </div>
+  );
+}
+
+const JD_MAX = 20000;
+const NOTES_MAX = 4000;
+
+/** What every AI action reads besides the resume itself: the role, the posting,
+    and standing instructions. Stored on the resume so it follows it around. */
+function AiContextFields({ resume, update }: Props) {
+  const jdLen = resume.jobDescription.length;
+  const ciLen = resume.customInstructions.length;
+  return (
+    <section aria-labelledby="ai-context-title" className="mt-10 border-t border-line pt-8">
+      <h3 id="ai-context-title" className="flex items-center gap-2 text-[15px] font-medium text-ink">
+        <Sparkles className="size-4 text-accent" strokeWidth={1.5} aria-hidden="true" /> What the AI should aim for
+      </h3>
+      <p className="mt-1 max-w-[56ch] text-[13px] leading-relaxed text-sub">
+        Used by every AI action here: summaries, objectives, bullets, skills, achievements, Tailor, cover letter and LinkedIn. Never printed on the sheet.
+      </p>
+      <div className="mt-6 flex flex-col gap-6">
+        <Field label="Target role" hint={resume.targetRole ? "The wording and keywords follow this role." : "Leave empty to use the headline."}>
+          {(id, by) => <Input id={id} aria-describedby={by} value={resume.targetRole} onChange={(e) => update({ targetRole: e.target.value })} placeholder={resume.basics.headline || "Senior Frontend Engineer"} />}
+        </Field>
+        <Field
+          label="Job description"
+          hint={jdLen ? `${jdLen.toLocaleString()} characters. The AI mirrors its terms where your facts match; it never adds what you have not done.` : "Paste the whole posting, requirements included. Optional, but it sharpens everything."}
+          error={jdLen > JD_MAX ? `Too long by ${(jdLen - JD_MAX).toLocaleString()} characters. Trim the company boilerplate.` : undefined}
+        >
+          {(id, by) => <Textarea id={id} aria-describedby={by} minRows={6} value={resume.jobDescription} onChange={(e) => update({ jobDescription: e.target.value })} placeholder="Senior Frontend Engineer, Payments. We are looking for..." />}
+        </Field>
+        <Field
+          label="Custom instructions"
+          hint="Tone, what to emphasize, what to avoid. Followed on every AI action, but it cannot make the AI invent facts."
+          error={ciLen > NOTES_MAX ? `Keep it under ${NOTES_MAX.toLocaleString()} characters.` : undefined}
+        >
+          {(id, by) => <Textarea id={id} aria-describedby={by} minRows={3} value={resume.customInstructions} onChange={(e) => update({ customInstructions: e.target.value })} placeholder="Lead with leadership. Keep it plain, no buzzwords. Mention the payments rebuild wherever it fits." />}
+        </Field>
+      </div>
+    </section>
   );
 }
 
 export function SummarySection({ resume, update }: Props) {
   const { run, busy, error } = useAi();
   const [variants, setVariants] = useState<string[] | null>(null);
+  const [kind, setKind] = useState<"summary" | "objective">("summary");
   const [before, setBefore] = useState<string | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const words = resume.summary.trim() ? resume.summary.trim().split(/\s+/).length : 0;
 
-  const write = async () => {
+  // A summary sells experience; an objective states a direction (students,
+  // career changers, one specific role). Both land in the same field.
+  const write = async (task: "summary" | "objective") => {
+    setKind(task);
     setBefore(resume.summary); // remember what was here so it can be reverted
     setPicked(null);
-    const out = await run<{ variants: string[] }>("summary", { resume: resumeToText(resume), targetRole: resume.targetRole || resume.basics.headline });
+    setVariants(null);
+    const out = await run<{ variants: string[] }>(task, { resume: resumeToText(resume), ...aiContext(resume) });
     if (out) setVariants(out.variants);
   };
 
@@ -66,18 +111,25 @@ export function SummarySection({ resume, update }: Props) {
         title="Summary"
         line="Three sentences: who you are, the strongest proof, what you want next. 30 to 90 words."
         action={
-          <Button size="sm" variant="secondary" onClick={write} loading={busy}>
-            <Sparkles className="size-4" strokeWidth={1.5} /> {resume.summary.trim() ? "Rewrite three ways" : "Write three versions"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="ghost" onClick={() => write("objective")} loading={busy && kind === "objective"} disabled={busy && kind !== "objective"} title="A short statement of the role you want and why you fit. Suits students and career changers.">
+              Write an objective
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => write("summary")} loading={busy && kind === "summary"} disabled={busy && kind !== "summary"}>
+              <Sparkles className="size-4" strokeWidth={1.5} /> {resume.summary.trim() ? "Rewrite three ways" : "Write three versions"}
+            </Button>
+          </div>
         }
       />
-      <Field label="Professional summary" hint={`${words} words`} error={error ?? undefined}>
+      <Field label="Professional summary" hint={`${words} words${resume.jobDescription.trim() ? ". AI versions are aimed at your saved job description." : ""}`} error={error ?? undefined}>
         {(id, by) => <Textarea id={id} aria-describedby={by} minRows={4} value={resume.summary} onChange={(e) => update({ summary: e.target.value })} placeholder="Frontend engineer with 7 years shipping consumer web products..." />}
       </Field>
       {variants && (
         <div className="fade mt-5">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs text-sub">Pick one. It replaces the text above; you can still edit it or revert.</p>
+            <p className="text-xs text-sub">
+              {kind === "objective" ? "Three objectives. " : ""}Pick one. It replaces the text above; you can still edit it or revert.
+            </p>
             <div className="flex shrink-0 items-center gap-3">
               {picked !== null && before !== null && (
                 <button type="button" className="text-xs font-medium text-accent hover:underline" onClick={revert}>
@@ -99,6 +151,71 @@ export function SummarySection({ resume, update }: Props) {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Optional "Key achievements": three to five headline results lifted above the
+    experience section. The AI picks them from the rest of the resume. */
+export function AchievementsSection({ resume, update }: Props) {
+  const { run, busy, error } = useAi();
+  const [suggested, setSuggested] = useState<string[] | null>(null);
+  const list = resume.achievements.length ? resume.achievements : [""];
+  const filled = resume.achievements.filter((a) => a.trim());
+
+  const pull = async () => {
+    setSuggested(null);
+    const out = await run<{ achievements: string[] }>("achievements", {
+      resume: resumeToText({ ...resume, achievements: [] }),
+      existing: filled,
+      ...aiContext(resume),
+    });
+    if (out) setSuggested(out.achievements.filter((a) => a.trim()));
+  };
+
+  const add = (items: string[]) => {
+    update({ achievements: [...filled, ...items] });
+    setSuggested((s) => (s ? s.filter((x) => !items.includes(x)) : s));
+  };
+
+  return (
+    <div>
+      <SectionHeader
+        title="Key achievements"
+        line="Optional. Three to five results a recruiter should see first, each with its number. Leave empty to hide the section."
+        action={
+          <Button size="sm" variant="secondary" onClick={pull} loading={busy}>
+            <Sparkles className="size-4" strokeWidth={1.5} /> {filled.length ? "Suggest more" : "Pick from my resume"}
+          </Button>
+        }
+      />
+      {error && <p className="mb-4 text-sm text-danger" role="alert">{error}</p>}
+      {suggested && (
+        <div className="fade mb-6">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-sub">{suggested.length ? "Drawn from your roles and projects, figures kept as written. Add the ones that are true and strong." : "Nothing new to add. Your list already covers the strongest results."}</p>
+            <div className="flex shrink-0 items-center gap-3">
+              {suggested.length > 1 && (
+                <button type="button" className="text-xs font-medium text-accent hover:underline" onClick={() => add(suggested)}>
+                  Add all
+                </button>
+              )}
+              <button type="button" className="text-xs text-sub hover:text-ink" onClick={() => setSuggested(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+          {suggested.length > 0 && <VariantList variants={suggested} pickLabel="Add" onPick={(v) => add([v])} />}
+        </div>
+      )}
+      <div data-bullets>
+        <BulletList
+          label="Achievements"
+          bullets={list}
+          onChange={(achievements) => update({ achievements: achievements.length === 1 && !achievements[0].trim() ? [] : achievements })}
+          context={{ role: "key achievement", company: "", ...aiContext(resume) }}
+        />
+      </div>
     </div>
   );
 }

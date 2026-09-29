@@ -9,7 +9,9 @@ export const SAMPLE_RESUME: Resume = {
   updatedAt: 0,
   targetRole: "Senior Frontend Engineer",
   jobDescription: "",
-  sectionOrder: ["summary", "experience", "projects", "skills", "education", "certifications"],
+  customInstructions: "",
+  sectionOrder: ["summary", "achievements", "experience", "projects", "skills", "education", "certifications"],
+  achievements: [],
   pageBreaks: [],
   basics: {
     name: "Devika Nair",

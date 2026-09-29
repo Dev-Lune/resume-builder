@@ -7,7 +7,7 @@ import { Field, Input, Textarea } from "@/components/ui/Field";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { emptyExperience, emptyProject, type Resume } from "@/lib/schema";
-import { resumeToText } from "@/lib/text";
+import { aiContext, resumeToText } from "@/lib/text";
 import type { Update } from "./Editor";
 import { VariantList } from "./bits";
 import { swap } from "./Sections";
@@ -79,10 +79,12 @@ export function BulletList({
   bullets,
   onChange,
   context,
+  label = "Bullets",
 }: {
   bullets: string[];
   onChange: (b: string[]) => void;
-  context: { role: string; company: string; targetRole: string };
+  context: { role: string; company: string; targetRole: string; jobDescription?: string; customInstructions?: string };
+  label?: string;
 }) {
   const { run, busy, error, reset } = useAi();
   const [openAt, setOpenAt] = useState<number | null>(null);
@@ -101,7 +103,7 @@ export function BulletList({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[13px] font-medium text-ink-dim">Bullets</span>
+      <span className="text-[13px] font-medium text-ink-dim">{label}</span>
       {bullets.map((b, i) => (
         <div key={i}>
           <div className="flex items-start gap-1.5">
@@ -168,7 +170,7 @@ export function ExperienceSection({ resume, update }: Props) {
   const list = resume.experience;
   const { run, busy, error } = useAi();
   const [suggestingFor, setSuggestingFor] = useState<string | null>(null);
-  const targetRole = resume.targetRole || resume.basics.headline;
+  const ctx = aiContext(resume);
   const setAt = (i: number, patch: Partial<(typeof list)[number]>) =>
     update({ experience: list.map((e, k) => (k === i ? { ...e, ...patch } : e)) });
 
@@ -178,9 +180,9 @@ export function ExperienceSection({ resume, update }: Props) {
     const out = await run<{ bullets: string[] }>("suggestBullets", {
       role: e.role || "this role",
       company: e.company,
-      targetRole,
       existing: e.bullets.filter(Boolean),
       context: resumeToText(resume).slice(0, 4000),
+      ...ctx,
     });
     setSuggestingFor(null);
     if (out) setAt(i, { bullets: [...e.bullets.filter((b) => b.trim()), ...out.bullets] });
@@ -213,7 +215,7 @@ export function ExperienceSection({ resume, update }: Props) {
                 I work here now
               </label>
               <div className="sm:col-span-2" data-bullets>
-                <BulletList bullets={e.bullets} onChange={(bullets) => setAt(i, { bullets })} context={{ role: e.role, company: e.company, targetRole }} />
+                <BulletList bullets={e.bullets} onChange={(bullets) => setAt(i, { bullets })} context={{ role: e.role, company: e.company, ...ctx }} />
                 <div className="mt-3 flex items-center gap-3">
                   <Button size="sm" variant="ghost" onClick={() => suggest(i)} loading={busy && suggestingFor === e.id} className="text-accent">
                     <Sparkles className="size-4" strokeWidth={1.5} /> Suggest bullets for this role
@@ -234,7 +236,7 @@ export function ExperienceSection({ resume, update }: Props) {
 
 export function ProjectsSection({ resume, update }: Props) {
   const list = resume.projects;
-  const targetRole = resume.targetRole || resume.basics.headline;
+  const ctx = aiContext(resume);
   const setAt = (i: number, patch: Partial<(typeof list)[number]>) =>
     update({ projects: list.map((p, k) => (k === i ? { ...p, ...patch } : p)) });
   return (
@@ -256,7 +258,7 @@ export function ProjectsSection({ resume, update }: Props) {
                 {(id) => <Input id={id} value={p.description} onChange={(ev) => setAt(i, { description: ev.target.value })} placeholder="Open-source bookkeeping UI for small businesses, 1.9k stars" />}
               </Field>
               <div className="sm:col-span-2" data-bullets>
-                <BulletList bullets={p.bullets} onChange={(bullets) => setAt(i, { bullets })} context={{ role: "project", company: p.name, targetRole }} />
+                <BulletList bullets={p.bullets} onChange={(bullets) => setAt(i, { bullets })} context={{ role: "project", company: p.name, ...ctx }} />
               </div>
             </div>
           </EntryFrame>

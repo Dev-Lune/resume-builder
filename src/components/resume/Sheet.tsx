@@ -7,6 +7,8 @@ const dates = (start: string, end: string, current?: boolean) =>
 const hasContent = (r: Resume, s: SectionId) =>
   s === "summary"
     ? r.summary.trim().length > 0
+    : s === "achievements"
+      ? (r.achievements ?? []).some((a) => a.trim())
     : s === "experience"
       ? r.experience.some((e) => e.role || e.company)
       : s === "education"
@@ -57,6 +59,14 @@ export function Sheet({ resume: r, className, id }: { resume: Resume; className?
         <section key={s} className={cn("section", r.pageBreaks?.includes(s) && "break-before")}>
           <h2 className="section-title">{SECTION_LABELS[s]}</h2>
           {s === "summary" && <p>{r.summary}</p>}
+
+          {s === "achievements" && (
+            <ul>
+              {r.achievements.filter((x) => x.trim()).map((x, i) => (
+                <li key={i}>{x.trim()}</li>
+              ))}
+            </ul>
+          )}
 
           {s === "experience" &&
             r.experience.map((e) => (

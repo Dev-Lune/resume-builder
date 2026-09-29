@@ -15,6 +15,10 @@ export function resumeToText(r: Resume): string {
   for (const sec of r.sectionOrder) {
     const title = SECTION_LABELS[sec].toUpperCase();
     if (sec === "summary" && r.summary.trim()) out.push("", title, r.summary.trim());
+    if (sec === "achievements") {
+      const list = (r.achievements ?? []).filter((x) => x.trim());
+      if (list.length) out.push("", title, ...list.map((x) => `- ${x.trim()}`));
+    }
     if (sec === "experience" && r.experience.length) {
       out.push("", title);
       for (const e of r.experience) {
@@ -54,4 +58,14 @@ export function resumeToText(r: Resume): string {
     }
   }
   return out.join("\n").trim() + "\n";
+}
+
+/** The context every AI call about this resume shares: the role it targets,
+    the posting it is aimed at, and the person's standing instructions. */
+export function aiContext(r: Resume) {
+  return {
+    targetRole: r.targetRole || r.basics.headline,
+    jobDescription: r.jobDescription ?? "",
+    customInstructions: r.customInstructions ?? "",
+  };
 }

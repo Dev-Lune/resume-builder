@@ -16,6 +16,7 @@ import {
   Files,
   ScanSearch,
   Scissors,
+  Trophy,
   User,
   Wrench,
   ChevronDown as Caret,
@@ -38,7 +39,7 @@ import { resumeToText } from "@/lib/text";
 import { CoverLetterDrawer } from "./CoverLetterDrawer";
 import { FitDrawer } from "./FitDrawer";
 import { LinkedInDrawer } from "./LinkedInDrawer";
-import { CertificationsSection, DetailsSection, EducationSection, SummarySection } from "./Sections";
+import { AchievementsSection, CertificationsSection, DetailsSection, EducationSection, SummarySection } from "./Sections";
 import { ExperienceSection, ProjectsSection } from "./Entries";
 import { SkillsSection } from "./Skills";
 import { TailorDrawer } from "./TailorDrawer";
@@ -50,13 +51,14 @@ type Drawer = "fit" | "tailor" | "cover" | "linkedin" | null;
 
 // Fields compared to decide what is unsaved. updatedAt/id are excluded.
 const DIFF_KEYS: (keyof Resume)[] = [
-  "title", "basics", "summary", "experience", "education", "projects", "skills",
-  "certifications", "sectionOrder", "pageBreaks", "template", "paper", "targetRole", "jobDescription",
+  "title", "basics", "summary", "achievements", "experience", "education", "projects", "skills",
+  "certifications", "sectionOrder", "pageBreaks", "template", "paper", "targetRole", "jobDescription", "customInstructions",
 ];
 
 const SECTION_ICON: Record<Active, typeof User> = {
   basics: User,
   summary: AlignLeft,
+  achievements: Trophy,
   experience: Briefcase,
   education: GraduationCap,
   projects: FolderGit2,
@@ -110,8 +112,8 @@ export function Editor({ id }: { id: string }) {
     for (const k of DIFF_KEYS) {
       if (JSON.stringify(draft[k]) !== JSON.stringify(stored[k])) {
         count++;
-        if (k === "title" || k === "basics") tabs.add("basics");
-        else if (k === "summary" || k === "experience" || k === "education" || k === "projects" || k === "skills" || k === "certifications") tabs.add(k);
+        if (k === "title" || k === "basics" || k === "targetRole" || k === "jobDescription" || k === "customInstructions") tabs.add("basics");
+        else if (k === "summary" || k === "achievements" || k === "experience" || k === "education" || k === "projects" || k === "skills" || k === "certifications") tabs.add(k);
       }
     }
     return { dirty: count > 0, count, tabs };
@@ -200,6 +202,7 @@ export function Editor({ id }: { id: string }) {
   }
 
   const counts: Partial<Record<SectionId, number>> = {
+    achievements: resume.achievements.filter((a) => a.trim()).length,
     experience: resume.experience.length,
     education: resume.education.length,
     projects: resume.projects.length,
@@ -310,6 +313,7 @@ export function Editor({ id }: { id: string }) {
           <div className="mx-auto max-w-2xl px-5 py-8 md:px-8 md:py-10">
             {active === "basics" && <DetailsSection resume={resume} update={update} />}
             {active === "summary" && <SummarySection resume={resume} update={update} />}
+            {active === "achievements" && <AchievementsSection resume={resume} update={update} />}
             {active === "experience" && <ExperienceSection resume={resume} update={update} />}
             {active === "education" && <EducationSection resume={resume} update={update} />}
             {active === "projects" && <ProjectsSection resume={resume} update={update} />}

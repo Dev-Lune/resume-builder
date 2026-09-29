@@ -62,6 +62,9 @@ export function Interview() {
   const [seededJd, setSeededJd] = useState("");
   const [level, setLevel] = useState<(typeof LEVELS)[number]>("3-5 years");
   const [industry, setIndustry] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [aimOpen, setAimOpen] = useState(false);
   const [basics, setBasics] = useState<Basics>(emptyBasics());
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [qNote, setQNote] = useState<string | null>(null);
@@ -129,7 +132,7 @@ export function Interview() {
       return;
     }
     fetching.current = true;
-    const out = await run<{ questions: Question[] }>("questions", { role, level, industry, count: 8 });
+    const out = await run<{ questions: Question[] }>("questions", { role, level, industry, count: 8, jobDescription, customInstructions });
     if (out?.questions?.length) {
       setQuestions(out.questions);
       setAnswers(new Array(out.questions.length).fill(""));
@@ -138,7 +141,7 @@ export function Interview() {
       applyStandard("Standard questions this time.");
     }
     fetching.current = false;
-  }, [run, role, level, industry, questions, manual, applyStandard]);
+  }, [run, role, level, industry, questions, manual, applyStandard, jobDescription, customInstructions]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -154,7 +157,10 @@ export function Interview() {
       const seed = JSON.parse(raw) as { text?: string; jd?: string };
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (seed.text) setImportText(seed.text);
-      if (seed.jd) setSeededJd(seed.jd);
+      if (seed.jd) {
+        setSeededJd(seed.jd);
+        setJobDescription(seed.jd);
+      }
       sessionStorage.removeItem("bespoke:scan-seed");
     } catch {}
   }, [params]);
@@ -168,9 +174,11 @@ export function Interview() {
       level,
       basics,
       answers: questions.map((q, k) => ({ question: q.question, answer: answers[k] ?? "" })),
+      jobDescription,
+      customInstructions,
     });
     if (!out) return;
-    const base = { ...emptyResume(`${basics.name || "My"} resume`), basics, targetRole: role };
+    const base = { ...emptyResume(`${basics.name || "My"} resume`), basics, targetRole: role, jobDescription, customInstructions };
     const resume = hydrateDraft(out, base);
     resume.basics = { ...resume.basics, ...basics, headline: resume.basics.headline || role };
     resume.title = `${resume.basics.name || "My"} resume, ${role}`;
@@ -179,15 +187,15 @@ export function Interview() {
   };
 
   const startBlank = () => {
-    const r = store.create({ ...emptyResume(`${basics.name || "My"} resume`), basics: { ...basics, headline: role }, targetRole: role });
+    const r = store.create({ ...emptyResume(`${basics.name || "My"} resume`), basics: { ...basics, headline: role }, targetRole: role, jobDescription, customInstructions });
     router.replace(`/editor/${r.id}`);
   };
 
   const runImport = async () => {
     reset();
-    const out = await run<DraftResume>("import", { text: importText, role });
+    const out = await run<DraftResume>("import", { text: importText, role, jobDescription: jobDescription });
     if (!out) return;
-    const resume = hydrateDraft(out, { ...emptyResume(), targetRole: role, jobDescription: seededJd });
+    const resume = hydrateDraft(out, { ...emptyResume(), targetRole: role, jobDescription: jobDescription, customInstructions });
     resume.title = `${resume.basics.name || "Imported"} resume${role ? `, ${role}` : ""}`;
     const saved = store.create(resume);
     await stashSourceFile(saved.id);
@@ -214,6 +222,33 @@ export function Interview() {
   const preview = useMemo(
     () => ({ ...emptyResume(`${basics.name || "My"} resume`), basics: { ...basics, headline: basics.headline || role }, targetRole: role }),
     [basics, role],
+  );
+
+  // Optional posting + standing instructions. Folded by default so the first
+  // step stays one question; they are saved onto the resume either way.
+  const aimCount = [jobDescription, customInstructions].filter((s) => s.trim()).length;
+  const aimFields = (
+    <details open={aimOpen} onToggle={(e) => setAimOpen(e.currentTarget.open)} className="group rounded-xl border border-line bg-raised/40 px-4 py-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-medium text-ink [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          <Sparkles className="size-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+          Aim it at a posting, add instructions
+          <span className="font-normal text-sub">(optional)</span>
+        </span>
+        <span className="text-[12px] font-normal text-sub">{aimCount ? `${aimCount} added` : ""}</span>
+      </summary>
+      <div className="mt-4 flex flex-col gap-5 pb-1">
+        <Field
+          label="Job description"
+          hint={seededJd && jobDescription === seededJd ? "Loaded from your scan." : "Paste the whole posting. Questions, wording and skills lean toward it; nothing you have not done is added."}
+        >
+          {(id, by) => <Textarea id={id} aria-describedby={by} minRows={5} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="Senior Frontend Engineer, Payments. We are looking for..." />}
+        </Field>
+        <Field label="Custom instructions" hint="Tone, what to emphasize, what to avoid. Kept with the resume and used by every AI action later.">
+          {(id, by) => <Textarea id={id} aria-describedby={by} minRows={3} value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Lead with leadership. Keep it plain, no buzzwords. Mention the payments rebuild." />}
+        </Field>
+      </div>
+    </details>
   );
 
   const stepIdx = stage === "import" ? -1 : STAGE_INDEX[stage];
@@ -304,6 +339,8 @@ export function Interview() {
                     <Field label="Industry (optional)">
                       {(id) => <Input id={id} value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Fintech, healthcare, agency work" />}
                     </Field>
+
+                    {aimFields}
 
                     <div className="border-t border-line pt-6">
                       <ProviderPicker />
@@ -584,6 +621,8 @@ export function Interview() {
                   <Field label="Target role" hint="Optional. Sets the headline and steers skill grouping.">
                     {(id, by) => <Input id={id} aria-describedby={by} value={role} onChange={(e) => setRole(e.target.value)} placeholder="Senior Frontend Engineer" />}
                   </Field>
+
+                  {aimFields}
 
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">

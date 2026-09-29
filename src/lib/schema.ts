@@ -8,6 +8,7 @@ export type Paper = "letter" | "a4";
 
 export const SECTION_IDS = [
   "summary",
+  "achievements",
   "experience",
   "education",
   "projects",
@@ -18,6 +19,7 @@ export type SectionId = (typeof SECTION_IDS)[number];
 
 export const SECTION_LABELS: Record<SectionId, string> = {
   summary: "Summary",
+  achievements: "Key achievements",
   experience: "Experience",
   education: "Education",
   projects: "Projects",
@@ -87,6 +89,8 @@ export type Resume = {
   updatedAt: number;
   basics: Basics;
   summary: string;
+  /** One-line headline results for an optional "Key achievements" section. */
+  achievements: string[];
   experience: Experience[];
   education: Education[];
   projects: Project[];
@@ -97,6 +101,7 @@ export type Resume = {
   pageBreaks: SectionId[];
   targetRole: string;
   jobDescription: string;
+  customInstructions: string;
 };
 
 export type AppStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
@@ -203,6 +208,7 @@ export const emptyResume = (title = "Untitled resume"): Resume => ({
   updatedAt: Date.now(),
   basics: emptyBasics(),
   summary: "",
+  achievements: [],
   experience: [],
   education: [],
   projects: [],
@@ -212,16 +218,23 @@ export const emptyResume = (title = "Untitled resume"): Resume => ({
   pageBreaks: [],
   targetRole: "",
   jobDescription: "",
+  customInstructions: "",
 });
 
 /** Fill any missing keys from an older stored version. */
 export function normalizeResume(input: Partial<Resume> & { id: string }): Resume {
   const base = emptyResume();
   const r: Resume = { ...base, ...input, basics: { ...base.basics, ...(input.basics ?? {}) } };
-  r.sectionOrder = [
-    ...(r.sectionOrder ?? []).filter((s) => SECTION_IDS.includes(s)),
-    ...SECTION_IDS.filter((s) => !(r.sectionOrder ?? []).includes(s)),
-  ];
+  // Keep the stored order; slot any section added since (e.g. achievements)
+  // right after the section that precedes it by default.
+  const order = (r.sectionOrder ?? []).filter((s, i, a) => SECTION_IDS.includes(s) && a.indexOf(s) === i);
+  SECTION_IDS.forEach((s, k) => {
+    if (order.includes(s)) return;
+    const prev = k > 0 ? order.indexOf(SECTION_IDS[k - 1]) : -1;
+    order.splice(prev + 1, 0, s);
+  });
+  r.sectionOrder = order;
+  r.achievements = Array.isArray(r.achievements) ? r.achievements.filter((a) => typeof a === "string") : [];
   r.pageBreaks = (r.pageBreaks ?? []).filter((s) => SECTION_IDS.includes(s));
   return r;
 }
@@ -310,6 +323,9 @@ export const CoverOut = z.object({ letter: s });
 
 export const LinkedInOut = z.object({ headline: s, about: s, tips: z.array(s) });
 export type LinkedInResult = z.infer<typeof LinkedInOut>;
+
+export const AchievementsOut = z.object({ achievements: z.array(s) });
+export type AchievementsResult = z.infer<typeof AchievementsOut>;
 
 /** Turn an AI draft into a stored resume, keeping ids and settings from `base`. */
 export function hydrateDraft(draft: DraftResume, base: Resume): Resume {

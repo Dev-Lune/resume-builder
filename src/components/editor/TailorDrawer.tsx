@@ -20,12 +20,14 @@ export function TailorDrawer({ open, onClose, resume, update }: { open: boolean;
     setResult(null);
     const out = await run<TailorResult>("tailor", {
       jobDescription: jd,
+      customInstructions: resume.customInstructions,
       resume: {
         headline: resume.basics.headline,
         summary: resume.summary,
         experience: resume.experience.map((e, index) => ({ index, role: e.role, company: e.company, bullets: e.bullets.filter(Boolean) })),
         skills: resume.skills.map((g) => ({ name: g.name, items: g.items })),
         other: [
+          ...resume.achievements.filter((a) => a.trim()),
           ...resume.projects.map((p) => `${p.name}: ${p.description} ${p.bullets.join(" ")}`),
           ...resume.education.map((e) => `${e.degree} ${e.field} ${e.school}`),
           ...resume.certifications.map((c) => c.name),

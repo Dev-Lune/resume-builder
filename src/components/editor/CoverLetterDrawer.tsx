@@ -10,11 +10,13 @@ import { useAi } from "./useAi";
 
 export function CoverLetterDrawer({ open, onClose, resume }: { open: boolean; onClose: () => void; resume: Resume }) {
   const { run, busy, error } = useAi();
-  const [jd, setJd] = useState("");
+  // null = follow the resume's saved posting; a string = a one-off override for this letter.
+  const [jd, setJd] = useState<string | null>(null);
   const [company, setCompany] = useState("");
   const [letter, setLetter] = useState("");
   const [copied, setCopied] = useState(false);
-  const posting = jd || resume.jobDescription;
+  const posting = jd ?? resume.jobDescription;
+  const usingSaved = jd === null && !!resume.jobDescription.trim();
 
   const write = async () => {
     const out = await run<{ letter: string }>("cover", {
@@ -22,6 +24,7 @@ export function CoverLetterDrawer({ open, onClose, resume }: { open: boolean; on
       jobDescription: posting,
       name: resume.basics.name,
       company,
+      customInstructions: resume.customInstructions,
     });
     if (out) setLetter(out.letter);
   };
@@ -55,11 +58,20 @@ export function CoverLetterDrawer({ open, onClose, resume }: { open: boolean; on
         <Field label="Company (optional)">{(id) => <Input id={id} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Kestrel Pay" />}</Field>
         <Field
           label="Job posting"
-          hint={resume.jobDescription && !jd ? "Using the posting from Tailor. Paste a different one to override." : "Paste the posting. The letter answers what it asks for, with facts from your resume."}
+          hint={
+            usingSaved
+              ? "Using the job description saved on this resume. Edit here for a one-off letter; the saved one stays as is."
+              : `Paste the posting. The letter answers what it asks for, with facts from your resume.${resume.customInstructions.trim() ? " Your custom instructions apply too." : ""}`
+          }
           error={error ?? undefined}
         >
           {(id, by) => <Textarea id={id} aria-describedby={by} minRows={6} value={posting} onChange={(e) => setJd(e.target.value)} />}
         </Field>
+        {jd !== null && resume.jobDescription.trim() && jd !== resume.jobDescription && (
+          <button type="button" className="-mt-3 w-fit text-xs font-medium text-accent hover:underline" onClick={() => setJd(null)}>
+            Use the saved job description again
+          </button>
+        )}
         {letter && (
           <Field label="Your letter" hint="Edit freely. Around 220 words; four short paragraphs.">
             {(id, by) => <Textarea id={id} aria-describedby={by} minRows={14} value={letter} onChange={(e) => setLetter(e.target.value)} className="leading-relaxed" />}

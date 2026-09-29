@@ -68,6 +68,10 @@ export function buildDocx(r: Resume): Document {
     if (sec === "summary" && r.summary.trim()) {
       children.push(title(label), p({ children: [run(r.summary.trim())] }));
     }
+    if (sec === "achievements" && (r.achievements ?? []).some((x) => x.trim())) {
+      children.push(title(label));
+      r.achievements.filter((x) => x.trim()).forEach((x) => children.push(bullet(x.trim())));
+    }
     if (sec === "experience" && r.experience.some((e) => e.role || e.company)) {
       children.push(title(label));
       for (const e of r.experience) {

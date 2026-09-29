@@ -7,7 +7,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Field, Textarea } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
 import type { LinkedInResult, Resume } from "@/lib/schema";
-import { resumeToText } from "@/lib/text";
+import { aiContext, resumeToText } from "@/lib/text";
 import { useAi } from "./useAi";
 
 export function LinkedInDrawer({ open, onClose, resume }: { open: boolean; onClose: () => void; resume: Resume }) {
@@ -18,7 +18,7 @@ export function LinkedInDrawer({ open, onClose, resume }: { open: boolean; onClo
   const [copied, setCopied] = useState<"headline" | "about" | null>(null);
 
   const generate = async () => {
-    const out = await run<LinkedInResult>("linkedin", { resume: resumeToText(resume), targetRole: resume.targetRole || resume.basics.headline });
+    const out = await run<LinkedInResult>("linkedin", { resume: resumeToText(resume), ...aiContext(resume) });
     if (out) {
       setResult(out);
       setHeadline(out.headline);

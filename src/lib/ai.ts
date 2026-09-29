@@ -32,7 +32,9 @@ export type AiTask =
   | "skills"
   | "tailor"
   | "cover"
-  | "linkedin";
+  | "linkedin"
+  | "objective"
+  | "achievements";
 
 export class AiError extends Error {
   status: number;
